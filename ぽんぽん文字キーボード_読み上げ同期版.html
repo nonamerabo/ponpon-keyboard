@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>ぽんぽん もじキーボード</title>
+<style>
+:root{font-family:"Hiragino Maru Gothic ProN","Yu Gothic", "Meiryo",system-ui,sans-serif;color:#4e5573;background:#f9f7ff;--ink:#4e5573}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+button{font:inherit;color:inherit;border:none;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+#app{height:100dvh;height:100vh;height:100dvh;display:flex;flex-direction:column;gap:8px;padding:calc(7px + env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));max-width:950px;margin:auto;position:relative;isolation:isolate}
+.decor{position:fixed;pointer-events:none;opacity:.35;z-index:-1;animation:float 9s ease-in-out infinite; font-size:30px}.decor.one{left:3%;top:20%}.decor.two{right:4%;top:33%;animation-delay:-4s}.decor.three{left:52%;bottom:14%;animation-delay:-2s}
+@keyframes float{50%{transform:translateY(-16px) rotate(6deg)}}
+.head{display:flex;gap:7px;align-items:stretch;flex-shrink:0;min-height:54px}
+.tabs{display:flex;flex:1;gap:6px;min-width:0}.tab{background:#ece9ff;border:3px solid transparent;border-radius:20px;padding:5px 6px;font-weight:900;font-size:clamp(13px,3.2vw,20px);flex:1;min-width:0;box-shadow:0 3px 0 #d9d4f2}.tab.selected{background:#fff;border-color:#a5a0eb;box-shadow:0 3px 0 #8b83d8}.tab .emoji{display:block;font-size:20px;line-height:1}
+.mute{width:48px;border-radius:17px;background:#fff;border:2px solid #e2def3;font-size:22px;flex-shrink:0}
+.display{background:#fff;border:3px solid #ece6ff;border-radius:24px;min-height:100px;flex:0 0 clamp(100px,23vh,185px);box-shadow:0 5px 0 #e4ddfb;position:relative;overflow:hidden;padding:12px 15px}
+.typed{height:100%;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;line-height:1.35;font-size:clamp(36px,9vw,70px);font-weight:900;scrollbar-width:thin}
+.char{display:inline-block;white-space:pre-wrap;position:relative;animation:arrive .28s cubic-bezier(.2,1.5,.5,1) both;transform-origin:center bottom}.char.space{min-width:.43em}.char.newline{display:block;height:0}
+.char.speaking{background:#fff0a9;color:#f18148;border-radius:12px;animation:bounce .42s ease-in-out infinite alternate}
+@keyframes arrive{from{opacity:0;transform:translateY(-24px) scale(.65)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes bounce{to{transform:translateY(-9px) scale(1.09)}}
+.placeholder{color:#ded9ef;font-size:clamp(32px,7vw,52px);pointer-events:none}
+/* The entire keyboard fits without an internal scroll bar. */
+.keyboard-area{flex:1 1 auto;min-height:0;overflow:hidden;border-radius:20px;background:#ffffffa9;padding:5px;border:2px solid #f0eafb;touch-action:none}
+#keyboard{height:100%;min-height:0}
+.key-grid,.abc-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(10,minmax(0,1fr));gap:clamp(2px,.6vh,6px);height:100%;max-width:660px;margin:auto}
+.abc-grid{grid-template-rows:repeat(6,minmax(0,1fr))}
+.key{height:100%;min-height:0;min-width:0;border-radius:clamp(9px,1.5vh,17px);border:2px solid #ffffff99;box-shadow:0 3px 0 var(--shade,#d5ceef);font-size:clamp(20px,5.7vw,38px);font-weight:900;background:var(--bg,#f6e5f3);position:relative;transition:transform .08s,box-shadow .08s;touch-action:none;display:flex;align-items:center;justify-content:center}
+.key.pressed,.key:active{transform:translateY(2px) scale(.94);box-shadow:0 1px 0 var(--shade,#d5ceef)}
+.specialbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;flex:0 0 49px;min-height:0}
+.special{border-radius:14px;background:#fff0cd;box-shadow:0 3px 0 #e6cfa3;font-size:clamp(19px,5.1vw,28px);font-weight:900;touch-action:manipulation}
+.special[data-special="dak"]{background:#ffe2ee}.special[data-special="han"]{background:#dff3ff}.special[data-special="small"]{background:#eee2ff}
+.special.selected{outline:3px solid #a68ce8;outline-offset:-3px;transform:translateY(2px)}
+.specialbar.hidden{display:none}
+.actionbar{flex-shrink:0;display:grid;grid-template-columns:1.3fr 1fr .9fr .9fr .9fr .9fr;gap:6px;min-height:75px}
+.action{border-radius:18px;background:#fff;box-shadow:0 4px 0 #d7d0e8;border:2px solid #e9e2f5;min-width:0;display:flex;justify-content:center;align-items:center;flex-direction:column;gap:0;touch-action:none;transition:transform .08s}
+.action:active,.action.pressed{transform:translateY(3px) scale(.96);box-shadow:0 1px 0 #d7d0e8}
+.action svg{width:clamp(27px,7vw,43px);height:clamp(27px,7vw,43px);stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.action.read{background:#ffe6aa;border-color:#ffcf63;color:#ba762c}.action.mic{background:#ffd9e5;border-color:#f9b4c7;color:#b65c79}.action.enter{background:#c7f4f5;border-color:#8edbe3;color:#237f8f}.action.erase{background:#ffe2d8;border-color:#f5c5b6;color:#b56960}.action.clear{background:#e9e5ff;border-color:#d3c8fc;color:#6b63a8}
+.action .text{font-weight:900;font-size:clamp(10px,2.7vw,15px);line-height:1.2}.action .symbol{font-weight:900;font-size:35px;line-height:1}
+.action.hidden{display:none}.actionbar:has(.mic.hidden){grid-template-columns:1.3fr .9fr .9fr .9fr .9fr}
+.popup{position:fixed;display:none;z-index:1000;left:50%;top:50%;transform:translate(-50%,-50%);width:min(93vw,590px);max-height:min(75dvh,650px);overflow:auto;gap:8px;background:#fff;border:4px solid #b9a1ef;border-radius:25px;padding:17px;box-shadow:0 10px 0 #7b63b4,0 0 0 100vmax #41415d7a;touch-action:pan-y}
+.popup.visible{display:block}.popup-title{font-size:19px;font-weight:900;text-align:center;margin:0 0 10px}.popup-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.popup-grid.half{grid-template-columns:repeat(5,minmax(0,1fr))}.choice{height:clamp(52px,11vw,73px);min-width:0;border-radius:13px;background:#eee9ff;font-weight:900;font-size:clamp(23px,7vw,39px);box-shadow:0 3px 0 #c7b6ec;touch-action:manipulation}.choice:active{transform:translateY(2px)}.popup-close{margin:12px auto 0;display:block;width:90px;height:42px;border-radius:13px;background:#f1e6eb;font-size:23px;font-weight:900}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#5a536fee;color:#fff;padding:14px 21px;border-radius:18px;font-size:16px;z-index:2000;display:none;text-align:center;max-width:80vw;pointer-events:none}.toast.show{display:block}
+@media(max-height:730px) and (orientation:portrait){#app{gap:4px}.head{min-height:44px}.tab{border-radius:13px;padding:1px;font-size:12px}.tab .emoji{font-size:15px}.display{flex-basis:clamp(74px,15vh,110px);min-height:74px;padding:6px 10px}.typed{font-size:clamp(29px,8vw,51px)}.specialbar{flex-basis:38px}.actionbar{min-height:57px}.action .text{font-size:10px}.action svg{width:26px;height:26px}.action .symbol{font-size:26px}}
+@media (orientation:landscape) and (max-height:540px){#app{display:grid;grid-template-columns:33% 1fr;grid-template-rows:44px 1fr 60px;gap:5px}.head{grid-column:1;grid-row:1;min-height:0}.display{grid-column:1;grid-row:2;min-height:0;height:auto;flex:auto}.keyboard-area{grid-column:2;grid-row:1/3;min-height:0}.specialbar{grid-column:2;grid-row:3;min-height:0}.actionbar{grid-column:1;grid-row:3;min-height:0}.key-grid{grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr))}.abc-grid{grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}.key{font-size:clamp(17px,3.6vh,29px)}.tab{font-size:10px;border-radius:11px}.tab .emoji{font-size:14px}.action .text{font-size:8px}.action svg{width:23px;height:23px}.action .symbol{font-size:24px}.typed{font-size:clamp(26px,5vw,47px)}.special{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.decor,.char,.char.speaking{animation:none}}
+
+/* v3: Every keyboard mode stays within its own screen. */
+#app{gap:clamp(3px,.9vh,8px)}
+.display{flex:0 0 clamp(94px,21dvh,168px);padding:10px 12px;min-height:0}
+.typed{padding-right:clamp(63px,13vw,88px);font-size:clamp(32px,8.7vw,66px);line-height:1.35;cursor:text;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.display-tools{position:absolute;z-index:3;right:9px;top:8px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.tool-icon{display:grid;place-items:center;width:clamp(34px,8.5vw,49px);height:clamp(34px,8.5vw,49px);padding:4px;background:transparent;border:0;border-radius:50%;color:#9c8bcf;opacity:.95;box-shadow:none}
+.tool-icon:nth-child(2){color:#dc83ad}.tool-icon:active{transform:scale(.86);background:#f4edff}
+.tool-icon svg{width:100%;height:100%;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.tool-icon.hidden{display:none}.tool-icon.listening{background:#ffe0ef;animation:micpulse 1s infinite alternate}
+@keyframes micpulse{to{box-shadow:0 0 0 7px #ffe0ef80}}
+.actionbar,.actionbar:has(.mic.hidden){grid-template-columns:repeat(4,minmax(0,1fr));min-height:clamp(53px,10dvh,78px)}
+.action{padding:3px}.action svg{width:clamp(30px,7vw,44px);height:clamp(30px,7vw,44px)}
+.action.clear{background:#ffe1e4;border-color:#f6b9c3;color:#c3677c}
+.key-grid,.abc-grid{gap:clamp(1px,.48vh,5px)}
+.key{font-size:clamp(17px,min(5.8vw,4.4vh),40px);border-radius:clamp(6px,1.2vh,16px)}
+.specialbar{flex-basis:clamp(36px,7dvh,52px);gap:5px}.special{font-size:clamp(16px,5vw,26px)}
+.char.space{display:inline-block;min-width:.48em;background:#dceaff;border-radius:5px;vertical-align:baseline;height:.8em;opacity:.86;margin:0 2px}
+.char.space::after{content:'·';position:absolute;left:50%;top:50%;font-size:.52em;color:#7299ca;transform:translate(-50%,-52%)}
+.char.newline{display:inline-block;height:auto;min-width:.6em;color:#61abc4;font-size:.66em;vertical-align:baseline;opacity:.8}
+.insert-caret{display:inline-block;width:3px;height:.98em;vertical-align:-.13em;background:#f29c64;border-radius:3px;animation:caretblink .85s step-end infinite;pointer-events:none}
+@keyframes caretblink{50%{opacity:0}}
+.placeholder{font-size:clamp(21px,5.4vw,38px);opacity:.85}
+@media(max-height:730px) and (orientation:portrait){.display{flex-basis:clamp(78px,17dvh,110px)}.typed{font-size:clamp(27px,7.6vw,47px)}.display-tools{gap:1px}.tool-icon{width:35px;height:35px}.specialbar{flex-basis:37px}.actionbar{min-height:52px}}
+@media(orientation:landscape) and (max-height:540px){
+ #app{grid-template-columns:34% 1fr;grid-template-rows:42px minmax(0,1fr) 52px;gap:4px}
+ .display{height:100%;padding:5px 7px}.typed{font-size:clamp(25px,4.2vw,43px);padding-right:37px}
+ .display-tools{right:2px;top:3px;gap:0}.tool-icon{width:31px;height:31px}
+ .actionbar{min-height:0}.action svg{height:25px;width:25px}.action .symbol{font-size:24px}
+ .key{font-size:clamp(14px,4.2vh,29px)}.specialbar{min-height:0}.special{font-size:clamp(14px,4vh,21px)}
+ .keyboard-area{padding:3px}
+}
+@media(max-height:430px) and (orientation:portrait){.display{flex-basis:62px}.head{min-height:34px}.specialbar{flex-basis:30px}.actionbar{min-height:41px}.tab .emoji{display:none}.key{font-size:17px}}
+
+/* v4: clear visual hierarchy, bottom-corner tools, and popup affordances */
+.head{min-height:clamp(40px,7dvh,56px)}
+.tab{font-size:clamp(14px,3.6vw,21px);display:grid;place-items:center}
+.display{padding:9px 12px 0;flex-basis:clamp(120px,23dvh,190px)}
+.typed{height:100%;padding:0 2px clamp(40px,7dvh,54px);font-size:clamp(31px,8.2vw,64px);overflow-y:auto}
+.display-tools{position:absolute;left:12px;right:12px;bottom:5px;top:auto;display:flex;flex-direction:row;justify-content:space-between;align-items:end;pointer-events:none;gap:8px}
+.tools-left{display:flex;gap:clamp(8px,3vw,18px);align-items:center}
+.tool-icon{pointer-events:auto;width:clamp(36px,9vw,48px);height:clamp(36px,9vw,48px);padding:5px;opacity:.94;color:#d278a0;background:transparent;border:0;box-shadow:none}
+.tool-icon.read-icon{color:#8a79cb}.tool-icon.trash-icon{color:#b797ad}.tool-icon:focus-visible{outline:2px solid #9989e1;outline-offset:0}
+.tool-icon svg{stroke-width:2.4}
+.actionbar,.actionbar:has(.mic.hidden){grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(6px,1.8vw,13px);min-height:clamp(56px,10dvh,82px)}
+.action{border-radius:22px;border-width:3px;box-shadow:0 5px 0 #c7bfd9,0 6px 10px #8884ad22;position:relative}
+.action:active{box-shadow:0 2px 0 #c7bfd9;transform:translateY(3px)}
+.action:not(.enter):not(.erase){background:#e1eafb;border-color:#9db9ee;color:#607fbd}
+.action.enter{background:#bdf0ed;border-color:#72cdd4;color:#147e90}
+.action.erase{background:#ffdfcf;border-color:#f2a78f;color:#b96b51}
+.action svg{width:clamp(32px,8vw,47px);height:clamp(32px,8vw,47px)}
+.action .symbol{font-size:clamp(34px,9vw,53px)}
+.specialbar{gap:clamp(6px,1.5vw,12px);flex-basis:clamp(42px,7.8dvh,61px)}
+.special{display:flex;align-items:center;justify-content:center;position:relative;border:2px dashed #c7a8dd;box-shadow:0 3px 0 #d5bddf;border-radius:16px;padding:0 22px 0 6px;font-size:clamp(17px,5.2vw,29px)}
+.special[data-special=han]{border-color:#9ed3e6}.special[data-special=dak]{border-color:#eeb1c9}.special[data-special=small]{border-color:#c9b2e9}
+.popup-hint{position:absolute;right:7px;top:50%;transform:translateY(-50%) rotate(180deg);background:#ffffffb8;border-radius:7px;padding:1px 4px;font-size:clamp(11px,2.7vw,16px);color:#7b6f92;line-height:1.3}
+.special.selected .popup-hint{transform:translateY(-50%)}
+@media(max-height:730px) and (orientation:portrait){.display{flex-basis:clamp(91px,19dvh,135px)}.typed{font-size:clamp(27px,7vw,48px);padding-bottom:38px}.tool-icon{width:34px;height:34px}.specialbar{flex-basis:40px}.actionbar{min-height:53px}.special{font-size:clamp(14px,4.4vw,22px)}}
+@media(max-height:500px) and (orientation:portrait){.display{flex-basis:80px}.typed{font-size:29px;padding-bottom:29px}.tool-icon{width:29px;height:29px}.specialbar{flex-basis:32px}.actionbar{min-height:42px}}
+@media(orientation:landscape) and (max-height:540px){
+ #app{grid-template-rows:clamp(34px,11dvh,49px) minmax(0,1fr) clamp(42px,14dvh,64px)}
+ .display{height:100%;min-height:0;padding:5px 7px 0}
+ .typed{font-size:clamp(23px,4vw,41px);padding:0 2px 35px}
+ .display-tools{left:5px;right:5px;bottom:1px;top:auto;flex-direction:row;justify-content:space-between}
+ .tool-icon{width:clamp(28px,8vh,38px);height:clamp(28px,8vh,38px)}
+ .actionbar{min-height:0;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .action{border-radius:13px}.action svg{width:clamp(21px,7vh,32px);height:clamp(21px,7vh,32px)}.action .symbol{font-size:clamp(22px,8vh,36px)}
+ .specialbar{min-height:0;flex-basis:auto;gap:4px}.special{font-size:clamp(13px,4vh,22px);border-radius:10px;padding-right:16px}.popup-hint{right:3px;font-size:11px}
+ .head{min-height:0}.tab{font-size:clamp(10px,3vh,15px)}
+}
+</style>
+</head>
+<body>
+<div class="decor one" aria-hidden="true">☁️</div><div class="decor two" aria-hidden="true">⭐</div><div class="decor three" aria-hidden="true">✨</div>
+<main id="app">
+<div class="head"><div class="tabs"><button class="tab selected" data-mode="hira">ひらがな</button><button class="tab" data-mode="kata">カタカナ</button><button class="tab" data-mode="abc">ABC</button></div></div>
+<div class="display"><div class="typed" id="typed" aria-live="off"></div><div class="display-tools">
+<div class="tools-left"><button id="mic" class="tool-icon" aria-label="マイクで話す" title="マイク"><svg viewBox="0 0 40 40"><rect x="15" y="5" width="10" height="21" rx="5"/><path d="M9 20a11 11 0 0 0 22 0M20 31v5m-7 0h14"/></svg></button><button id="clear" class="tool-icon trash-icon" aria-label="全部消す" title="全部消す"><svg viewBox="0 0 40 40"><path d="M8 11h24M15 11V7h10v4M12 14l2 19h12l2-19M18 18v11M22 18v11"/></svg></button></div>
+<button id="read" class="tool-icon read-icon" aria-label="入力した文章を読み上げる" title="よみあげ"><svg viewBox="0 0 40 40"><path d="M6 16h8l10-8v24l-10-8H6z"/><path d="M29 14q8 6 0 12M32 8q14 12 0 24"/></svg></button>
+</div></div>
+<div class="keyboard-area" id="scrollKeys"><div id="keyboard"></div></div>
+<div class="specialbar" id="specialbar"><button class="special" data-special="dak" aria-label="濁音を選ぶ"><span class="special-example">゛ が</span><span class="popup-hint" aria-hidden="true">▴</span></button><button class="special" data-special="han" aria-label="半濁音を選ぶ"><span class="special-example">゜ ぱ</span><span class="popup-hint" aria-hidden="true">▴</span></button><button class="special" data-special="small" aria-label="小さい文字を選ぶ"><span class="special-example">小 ゃ</span><span class="popup-hint" aria-hidden="true">▴</span></button></div>
+<div class="actionbar">
+<button id="space" class="action" aria-label="スペース"><svg viewBox="0 0 48 40"><path d="M17 13v15h14V13z"/><path d="m13 20-9 0m0 0 5-5m-5 5 5 5M35 20h9m0 0-5-5m5 5-5 5"/></svg></button>
+<button id="enter" class="action enter" aria-label="改行"><span class="symbol">↵</span></button>
+<button id="erase" class="action erase" aria-label="一文字消す"><svg viewBox="0 0 40 40"><path d="m5 24 15-17a5 5 0 0 1 7 0l9 9a5 5 0 0 1 0 7L25 35H15zM12 17l17 14M22 35h15"/></svg></button>
+
+</div>
+</main>
+<div class="popup" id="popup"></div><div class="toast" id="toast" role="status"></div>
+<script>
+(()=>{'use strict';
+const syllables=[['あ','い','う','え','お'],['か','き','く','け','こ'],['さ','し','す','せ','そ'],['た','ち','つ','て','と'],['な','に','ぬ','ね','の'],['は','ひ','ふ','へ','ほ'],['ま','み','む','め','も'],['や','ゆ','よ'],['ら','り','る','れ','ろ'],['わ','を','ん','ー']];
+const small=['ゃ','ゅ','ょ','っ','ぁ','ぃ','ぅ','ぇ','ぉ'];
+const palette=[['#ffe3ed','#e6aabe'],['#ffecc9','#e9c48c'],['#fff4c3','#e6d487'],['#ddf5d0','#b1d89f'],['#d2f5ed','#9dd5c6'],['#d9eeff','#a5cbe6'],['#e5e4ff','#bbb8eb'],['#f4dcfc','#d9aeea'],['#ffdfe1','#e9b5b8'],['#d9f4fa','#a4d6e1']];
+const dak={か:['が'],き:['ぎ'],く:['ぐ'],け:['げ'],こ:['ご'],さ:['ざ'],し:['じ'],す:['ず'],せ:['ぜ'],そ:['ぞ'],た:['だ'],ち:['ぢ'],つ:['づ'],て:['で'],と:['ど'],は:['ば','ぱ'],ひ:['び','ぴ'],ふ:['ぶ','ぷ'],へ:['べ','ぺ'],ほ:['ぼ','ぽ']};
+const $=id=>document.getElementById(id),keyboard=$('keyboard'),typed=$('typed'),popup=$('popup');let mode='hira',text=[],caret=0,soundOn=true,ctx=null,voices=[],speakId=0,recognition=null,toastTimeout=0,activePointer=null;
+const supportedSpeech='speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+const Recognizer=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!Recognizer)$('mic').classList.add('hidden');
+function initAudio(){if(!soundOn)return;try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume().catch(()=>{});}catch(e){ctx=null;}}
+window.addEventListener('pointerdown',initAudio,{once:true});
+function tone(hz=450,duration=.105,type='sine',volume=.08,delay=0){if(!soundOn||!ctx)return;try{const now=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.setValueAtTime(hz,now);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(volume,now+.01);g.gain.exponentialRampToValueAtTime(.0001,now+duration);o.connect(g);g.connect(ctx.destination);o.start(now);o.stop(now+duration+.02);}catch(e){}}
+function pop(ch){tone(400+(ch.codePointAt(0)%9)*35,.115,'sine',.10);tone(750+(ch.codePointAt(0)%7)*25,.07,'sine',.025,.015)}
+function swish(){if(!soundOn||!ctx)return;for(let i=0;i<4;i++)tone(650-i*125,.055,'triangle',.022,i*.018)}
+function chime(){tone(660,.13,'sine',.055);tone(880,.17,'sine',.055,.10)}
+function toast(message){const t=$('toast');t.textContent=message;t.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>t.classList.remove('show'),1900)}
+function toKata(str){return str.replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96))}
+function toHira(str){return str.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96))}
+function lang(){return mode==='abc'?'en-US':'ja-JP'}
+function loadVoices(){if(supportedSpeech)voices=window.speechSynthesis.getVoices()||[]}
+if(supportedSpeech){loadVoices();window.speechSynthesis.addEventListener?.('voiceschanged',loadVoices)}
+function chooseVoice(language){const matching=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));return matching.find(v=>/female|samantha|kyoko|haruka|nanami|zira|google 日本語|google us english/i.test(v.name))||matching.find(v=>v.localService)||matching[0]||null}
+let speakingTimer=null;
+function stopSpeech(){
+ speakId++;
+ if(speakingTimer!==null){clearInterval(speakingTimer);speakingTimer=null}
+ if(supportedSpeech)try{window.speechSynthesis.cancel()}catch(e){}
+ document.querySelectorAll('.speaking').forEach(x=>x.classList.remove('speaking'));
+}
+function speak(str,highlightIndex=null,whole=false){
+ if(!supportedSpeech)return;
+ stopSpeech();const id=speakId;
+ const sayText=str.replace(/\n/g,'、');if(!sayText.trim())return;
+ const u=new SpeechSynthesisUtterance(sayText);
+ u.lang=lang();u.rate=.8;u.pitch=1.12;u.volume=1;
+ const v=chooseVoice(lang());if(v)u.voice=v;
+ // A single utterance keeps words natural, rather than breaking speech into characters.
+ // Synchronization uses real speech boundary events, with a gentle time-based fallback.
+ if(whole){
+  const units=[];
+  let offset=0;
+  text.forEach((c,i)=>{
+   const spoken=c==='\n'?'、':c;
+   units.push({start:offset,end:offset+spoken.length,index:i,char:c});
+   offset+=spoken.length;
+  });
+  const visible=units.filter(x=>x.char!=='\n'&&x.char!==' ');
+  const resolveIndex=(position)=>{
+   let found=visible[0]?.index??-1;
+   for(const item of visible){if(item.start>position)break;found=item.index}
+   return found;
+  };
+  let lastPosition=0,anchorPosition=0,anchorTime=0,hasStarted=false;
+  const msPerUnit=mode==='abc'?300:285;
+  const showPosition=pos=>{
+   if(!visible.length)return;
+   const adjusted=Math.max(0,Math.min(sayText.length-1,Math.floor(pos)));
+   if(adjusted<lastPosition)return;
+   lastPosition=adjusted;
+   const match=resolveIndex(adjusted);if(match>=0)mark(match);
+  };
+  u.onstart=()=>{
+   if(id!==speakId)return;
+   hasStarted=true;anchorTime=performance.now();anchorPosition=0;
+   showPosition(0); // First character when actual speech starts
+   speakingTimer=setInterval(()=>{
+    if(id!==speakId||!hasStarted)return;
+    // Re-anchor to real boundary notifications whenever supported.
+    // Never let a guessed position jump far ahead of the heard voice.
+    const elapsed=Math.max(0,performance.now()-anchorTime-110);
+    const predicted=anchorPosition+Math.floor(elapsed/msPerUnit);
+    showPosition(predicted);
+   },65);
+  };
+  u.onboundary=e=>{
+   if(id!==speakId||!Number.isFinite(e.charIndex)||!hasStarted)return;
+   // Some engines emit a word boundary rather than one for each character.
+   // The timer gently interpolates between these real positions.
+   anchorPosition=Math.max(lastPosition,e.charIndex);
+   anchorTime=performance.now();
+   showPosition(anchorPosition);
+  };
+  const finish=()=>{
+   if(id!==speakId)return;
+   if(speakingTimer!==null){clearInterval(speakingTimer);speakingTimer=null}
+   document.querySelectorAll('.speaking').forEach(x=>x.classList.remove('speaking'));
+   chime();
+  };
+  u.onend=finish;u.onerror=finish;
+ }else{
+  if(highlightIndex!=null)mark(highlightIndex);
+  u.onend=u.onerror=()=>{if(id===speakId)document.querySelectorAll('.speaking').forEach(x=>x.classList.remove('speaking'))};
+ }
+ try{window.speechSynthesis.speak(u)}catch(e){toast('このブラウザでは声が使えないよ')}
+}
+function mark(index){document.querySelectorAll('.speaking').forEach(x=>x.classList.remove('speaking'));const el=typed.querySelector('[data-index="'+index+'"]');if(el){el.style.animation='';el.classList.add('speaking');el.scrollIntoView({block:'nearest',inline:'nearest'})}}
+typed.addEventListener('click',e=>{if(e.target===typed||e.target.classList.contains('placeholder')){stopSpeech();setCaret(text.length)}});
+function setCaret(position){caret=Math.max(0,Math.min(text.length,position));renderText();}
+function renderText(newIndex=-1){
+ typed.replaceChildren();
+ 
+ const insertCursor=()=>{const c=document.createElement('span');c.className='insert-caret';c.setAttribute('aria-hidden','true');typed.append(c)};
+ text.forEach((c,i)=>{
+  if(i===caret)insertCursor();
+  const node=document.createElement('span');node.dataset.index=i;
+  node.className='char'+(c===' '?' space':'')+(c==='\n'?' newline':'');
+  node.textContent=c==='\n'?'↵':c;
+  if(i!==newIndex)node.style.animation='none';
+  node.addEventListener('click',()=>{stopSpeech();setCaret(i+1)});
+  typed.append(node);
+  if(c==='\n')typed.append(document.createElement('br'));
+ });
+ if(caret===text.length)insertCursor();
+ typed.scrollTop=typed.scrollHeight;
+}
+function add(c,read=true){initAudio();stopSpeech();if(text.length>=250){toast('いっぱい かけたね！');return}
+ text.splice(caret,0,c);const i=caret;caret++;renderText(i);
+ if(c===' '||c==='\n'){tone(520,.07,'sine',.06);return}
+ pop(c);if(read)speak(c,i)
+}
+function remove(){stopSpeech();if(caret<=0)return;text.splice(caret-1,1);caret--;renderText();swish()}
+function clear(){stopSpeech();text=[];caret=0;renderText();swish();tone(820,.11,'sine',.04,.08)}
+function makeKey(character,baseIndex=0){const btn=document.createElement('button');btn.className='key';btn.type='button';btn.textContent=character;btn.style.setProperty('--bg',palette[baseIndex%palette.length][0]);btn.style.setProperty('--shade',palette[baseIndex%palette.length][1]);btn.setAttribute('aria-label',character);
+btn.addEventListener('pointerdown',e=>{if(e.button!==0&&e.pointerType==='mouse')return;initAudio();btn.classList.add('pressed')});
+btn.addEventListener('pointerup',()=>btn.classList.remove('pressed'));
+btn.addEventListener('pointercancel',()=>btn.classList.remove('pressed'));
+btn.addEventListener('pointerleave',()=>btn.classList.remove('pressed'));
+btn.addEventListener('click',()=>add(character));return btn}
+function renderKeyboard(){keyboard.replaceChildren();const grid=document.createElement('div');grid.className=mode==='abc'?'abc-grid':'key-grid';
+if(mode==='abc'){'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((letter,i)=>grid.append(makeKey(letter,Math.floor(i/5))))}
+else{syllables.forEach((line,index)=>{line.forEach(c=>grid.append(makeKey(mode==='kata'?toKata(c):c,index)));for(let j=line.length;j<5;j++){const space=document.createElement('div');space.setAttribute('aria-hidden','true');grid.append(space)}})}
+keyboard.append(grid);$('specialbar').classList.toggle('hidden',mode==='abc');updateSpecialLabels()}
+function updateSpecialLabels(){
+ const kata=mode==='kata';const entries=[['dak',kata?'゛ ガ':'゛ が'],['han',kata?'゜ パ':'゜ ぱ'],['small',kata?'小 ャ':'小 ゃ']];
+ entries.forEach(([kind,label])=>{const b=document.querySelector('.special[data-special="'+kind+'"] .special-example');if(b)b.textContent=label});
+}
+function closePopup(){popup.classList.remove('visible');document.querySelectorAll('.special').forEach(b=>b.classList.remove('selected'))}
+function showSpecial(kind){initAudio();const active=popup.classList.contains('visible')&&popup.dataset.kind===kind;if(active){closePopup();return}
+const dakChars=Object.values(dak).map(v=>v[0]);const hanChars=Object.values(dak).filter(v=>v.length===2).map(v=>v[1]);
+const chars=kind==='dak'?dakChars:kind==='han'?hanChars:small;
+const displayed=mode==='kata'?chars.map(toKata):chars;
+popup.dataset.kind=kind;popup.replaceChildren();const title=document.createElement('div');title.className='popup-title';title.textContent=kind==='dak'?'゛ '+(mode==='kata'?'ガ ギ グ':'が ぎ ぐ'):kind==='han'?'゜ '+(mode==='kata'?'パ ピ プ':'ぱ ぴ ぷ'):'小 '+(mode==='kata'?'ャ ュ ョ':'ゃ ゅ ょ');popup.append(title);
+const grid=document.createElement('div');grid.className='popup-grid';displayed.forEach(c=>{const btn=document.createElement('button');btn.className='choice';btn.textContent=c;btn.addEventListener('click',()=>{closePopup();add(c)});grid.append(btn)});popup.append(grid);
+const close=document.createElement('button');close.className='popup-close';close.textContent='✕';close.setAttribute('aria-label','閉じる');close.addEventListener('click',closePopup);popup.append(close);popup.classList.add('visible');document.querySelectorAll('.special').forEach(b=>b.classList.toggle('selected',b.dataset.special===kind));tone(660,.08,'sine',.05)}
+document.querySelectorAll('.special').forEach(b=>b.addEventListener('click',()=>showSpecial(b.dataset.special)));
+popup.addEventListener('pointerdown',e=>e.stopPropagation());
+function setMode(next){if(next===mode)return;stopSpeech();closePopup();if(recognition){try{recognition.abort()}catch(e){}}mode=next;text=[];caret=0;renderText();renderKeyboard();document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('selected',t.dataset.mode===mode));tone(780,.13,'sine',.06)}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>setMode(t.dataset.mode)));
+function clickAction(id,fn){$(id).addEventListener('click',e=>{e.preventDefault();initAudio();fn()})}
+clickAction('read',()=>{if(!text.length){tone(450,.1);return}chime();speak(text.join(''),null,true)});
+clickAction('space',()=>add(' ',false));clickAction('enter',()=>add('\n',false));clickAction('erase',remove);
+clickAction('clear',clear);
+
+function convertSpoken(value){
+if(mode==='abc')return value.toUpperCase().replace(/[^A-Z\s'-]/g,'');
+// Browser recognition sometimes returns kanji. Convert frequently spoken children's words offline.
+const readings={'こんにちは':'こんにちは','有難う':'ありがとう','ありがとう':'ありがとう','お早う':'おはよう','お早うございます':'おはようございます','今日は':'こんにちは','お休み':'おやすみ','お休みなさい':'おやすみなさい','大好き':'だいすき','好き':'すき','嫌い':'きらい','楽しい':'たのしい','嬉しい':'うれしい','可愛い':'かわいい','大きい':'おおきい','小さい':'ちいさい','赤':'あか','青':'あお','黄色':'きいろ','緑':'みどり','白':'しろ','黒':'くろ','紫':'むらさき','桃色':'ももいろ','水色':'みずいろ','空':'そら','海':'うみ','山':'やま','川':'かわ','花':'はな','木':'き','星':'ほし','月':'つき','太陽':'たいよう','雨':'あめ','雪':'ゆき','雲':'くも','虹':'にじ','犬':'いぬ','猫':'ねこ','兎':'うさぎ','鳥':'とり','魚':'さかな','象':'ぞう','熊':'くま','馬':'うま','牛':'うし','豚':'ぶた','猿':'さる','苺':'いちご','林檎':'りんご','蜜柑':'みかん','葡萄':'ぶどう','西瓜':'すいか','桃':'もも','梨':'なし','朝':'あさ','昼':'ひる','夜':'よる','今日':'きょう','明日':'あした','昨日':'きのう','私':'わたし','僕':'ぼく','俺':'おれ','一':'いち','二':'に','三':'さん','四':'よん','五':'ご','六':'ろく','七':'なな','八':'はち','九':'きゅう','十':'じゅう','一つ':'ひとつ','二つ':'ふたつ','三つ':'みっつ','四つ':'よっつ','五つ':'いつつ','六つ':'むっつ','七つ':'ななつ','八つ':'やっつ','九つ':'ここのつ','十個':'じゅっこ','学校':'がっこう','幼稚園':'ようちえん','保育園':'ほいくえん','先生':'せんせい','友達':'ともだち','お母さん':'おかあさん','お父さん':'おとうさん','お姉ちゃん':'おねえちゃん','お兄ちゃん':'おにいちゃん','赤ちゃん':'あかちゃん','車':'くるま','電車':'でんしゃ','新幹線':'しんかんせん','飛行機':'ひこうき','自転車':'じてんしゃ','消防車':'しょうぼうしゃ','救急車':'きゅうきゅうしゃ','警察':'けいさつ','電気':'でんき','電話':'でんわ','ご飯':'ごはん','御飯':'ごはん','美味しい':'おいしい','食べる':'たべる','飲む':'のむ','遊ぼう':'あそぼう','遊ぶ':'あそぶ','行こう':'いこう','行く':'いく','帰る':'かえる','走る':'はしる','歩く':'あるく','寝る':'ねる','起きる':'おきる','見て':'みて','見せて':'みせて','何':'なに','誰':'だれ','何で':'なんで','何故':'なぜ','元気':'げんき','名前':'なまえ','大丈夫':'だいじょうぶ','頑張れ':'がんばれ','頑張って':'がんばって','お願いします':'おねがいします','頂戴':'ちょうだい','下さい':'ください','百':'ひゃく','千':'せん'};
+let out=toHira(value);
+Object.keys(readings).sort((a,b)=>b.length-a.length).forEach(k=>{out=out.split(k).join(readings[k])});
+return out;
+}
+if(Recognizer){clickAction('mic',()=>{try{if(recognition){recognition.abort();recognition=null;$('mic').classList.remove('listening');return}stopSpeech();recognition=new Recognizer();recognition.lang=lang();recognition.interimResults=false;recognition.continuous=false;recognition.maxAlternatives=1;$('mic').classList.add('listening');recognition.onresult=e=>{const heard=e.results?.[0]?.[0]?.transcript?.trim();if(!heard)return;const converted=convertSpoken(heard);if(!converted)return;const bits=Array.from(converted).slice(0,200);text=bits;caret=text.length;renderText(text.length-1);chime();speak(text.join(''),null,true)};recognition.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')toast('マイクのきょかを かくにんしてね');else if(e.error!=='no-speech'&&e.error!=='aborted')toast('マイクが つかえなかったよ')};recognition.onend=()=>{recognition=null;$('mic').classList.remove('listening')};recognition.start()}catch(e){recognition=null;$('mic').classList.remove('listening');toast('このブラウザでは マイクが つかえないよ')}})}
+// touch-action: manipulation and the viewport meta tag prevent double-tap zoom,
+// without suppressing the second tap of a rapidly repeated erase action.
+renderKeyboard();renderText();
+})();
+</script>
+</body>
+</html>
